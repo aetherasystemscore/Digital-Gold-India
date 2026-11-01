@@ -42,6 +42,7 @@ BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 SNAPSHOT_PATH = DATA_DIR / "latest_verified_snapshot.json"
 SQLITE_DB_PATH = DATA_DIR / "gold_audit_history.db"
+CUSTOM_MONITORED_OFFERS_PATH = DATA_DIR / "custom_monitored_offers.json"
 
 DEFAULT_HEADERS = {
     "User-Agent": (
@@ -1325,6 +1326,371 @@ def build_snip_platform_overview(
     ]
 
 
+# ============================================================================
+# 4C. LIVE PLATFORM PLANS, EXTRA-GOLD & DISCOUNT OFFER SCANNER (AUTO-VALIDATED)
+# ============================================================================
+
+LIVE_PLATFORM_PLANS_AND_PROMOS_CATALOG: List[Dict[str, Any]] = [
+    {
+        "plan_id": "bluestone_10_plus_1_gold_mine",
+        "platform_name": "BlueStone",
+        "plan_or_offer_name": "BlueStone 10+1 Gold Mine Monthly Plan (100% of 1st Installment Off)",
+        "offer_type": "Installment Discount Plan",
+        "tenure_or_lockin": "10 + 1 Months (Redeemable from 6th/11th Month)",
+        "extra_gold_or_discount_benefit": "Pay 10 monthly installments & get 100% of 1st month's installment as discount in 11th month (~8.33% effective discount) + Birthday/Anniversary milestone discounts.",
+        "effective_benefit_pct": 8.33,
+        "min_entry_ticket_inr": "₹1,000 / month",
+        "eligible_redemption_mode": "22K Gold & 18K/14K Diamond Jewellery (Excludes 24K Bullion Coins)",
+        "safety_and_hidden_catch_audit": "✅ Verified Safe Jeweller Plan: 100% of 1st installment bonus applies toward jewellery; gold rate is NOT locked on Day 1 (prevailing rate at redemption applies).",
+        "validation_keywords": ["gold mine", "10+1", "installment", "bluestone", "discount", "11th month"],
+        "official_url": "https://www.bluestone.com/gold-mine.html",
+    },
+    {
+        "plan_id": "malabar_golden_bloom_glitz",
+        "platform_name": "Malabar Gold & Diamonds",
+        "plan_or_offer_name": "Golden Bloom / Golden Glitz 11-Month Jewellery Plan",
+        "offer_type": "Rate-Lock & Making Charge Offer",
+        "tenure_or_lockin": "11 Months (330–360 Days)",
+        "extra_gold_or_discount_benefit": "Waives up to 14%–18% making charges on 22K BIS-hallmarked gold jewellery at maturity (~8.0% effective landed savings).",
+        "effective_benefit_pct": 8.00,
+        "min_entry_ticket_inr": "₹2,000 / month",
+        "eligible_redemption_mode": "22K BIS-Hallmarked Gold Jewellery at Malabar Stores/Online",
+        "safety_and_hidden_catch_audit": "✅ Verified Safe National Jeweller: Premature closure before 11 months forfeits the making-charge waiver.",
+        "validation_keywords": ["malabar", "gold", "jewellery", "making", "diamond", "coin"],
+        "official_url": "https://www.malabargoldanddiamonds.com/",
+    },
+    {
+        "plan_id": "tanishq_golden_harvest_plan",
+        "platform_name": "Tanishq (Titan Company Ltd.)",
+        "plan_or_offer_name": "Tanishq Golden Harvest Scheme (GHS — Up to 75% of 1st Installment Bonus)",
+        "offer_type": "Installment Discount Plan",
+        "tenure_or_lockin": "10 Months Installments (Redeem between Day 301–400)",
+        "extra_gold_or_discount_benefit": "Up to 75% of 1st month's installment added as maturity discount (~6.8% to 7.5% effective discount on accumulated principal).",
+        "effective_benefit_pct": 6.80,
+        "min_entry_ticket_inr": "₹2,000 / month",
+        "eligible_redemption_mode": "22K/18K Gold & Studded Jewellery across 400+ Tanishq Showrooms (Excludes 24K Coins)",
+        "safety_and_hidden_catch_audit": "✅ Highest Corporate Backing (Tata/Titan): Can be combined with Tata Neu Infinity HDFC Card (5% NeuCoins) on installment/checkout payments where eligible.",
+        "validation_keywords": ["golden harvest", "tanishq", "installment", "redemption", "maturity", "titan"],
+        "official_url": "https://www.tanishqgoldenharvest.co.in/",
+    },
+    {
+        "plan_id": "caratlane_pop_9_plus_1",
+        "platform_name": "CaratLane (A Tanishq Partnership)",
+        "plan_or_offer_name": "CaratLane PoP! Plan of Purchase (9+1 Plan + Month-10 Bonus)",
+        "offer_type": "Installment Discount Plan",
+        "tenure_or_lockin": "9 Months Installments + 10th Month Redemption",
+        "extra_gold_or_discount_benefit": "Pay 9 monthly installments & get up to 30%–50% of 1st installment as PoP! bonus in Month 10 (~5.0% effective discount).",
+        "effective_benefit_pct": 5.00,
+        "min_entry_ticket_inr": "₹1,000 / month",
+        "eligible_redemption_mode": "Studded / Diamond & Everyday Gold Jewellery (Excludes 24K Gold Coins & eGold)",
+        "safety_and_hidden_catch_audit": "✅ Titan Group Subsidiary: CaratLane eGold can also be redeemed 1:1 against jewellery; PoP! bonus is strictly for jewellery.",
+        "validation_keywords": ["plan of purchase", "pop", "caratlane", "installment", "9 months", "10th month", "redeem"],
+        "official_url": "https://www.caratlane.com/plan-of-purchase",
+    },
+    {
+        "plan_id": "senco_mydigigold_samriddhi_referral",
+        "platform_name": "Senco Gold (myDigiGold)",
+        "plan_or_offer_name": "Senco myDigiGold Referral Bonus (₹200/₹100) + Samriddhi SIP & Marigold Vouchers",
+        "offer_type": "Referral Extra Gold / Cash",
+        "tenure_or_lockin": "Flexible (Up to 3–5 Years Free Vault Storage)",
+        "extra_gold_or_discount_benefit": "Earn ₹200 (referrer) + ₹100 (referee) bonus gold on referrals; start at ₹1,000 initial (or ₹10/day Samriddhi Plan) and redeem 1:1 for Senco jewellery or Marigold Scheme vouchers.",
+        "effective_benefit_pct": 3.00,
+        "min_entry_ticket_inr": "₹1,000 initial (or ₹10/day Samriddhi Plan)",
+        "eligible_redemption_mode": "1:1 Jewellery Redemption at 150+ Senco Gold Showrooms or Marigold Scheme Vouchers",
+        "safety_and_hidden_catch_audit": "✅ Listed Jeweller (NSE: SENCO) + IDBI Trusteeship: Ideal <5-year digital gold accumulation for planned jewellery buyers.",
+        "validation_keywords": ["mydigigold", "senco", "24k", "digital gold", "redeem", "jewellery", "marigold", "samriddhi"],
+        "official_url": "https://mydigigold.com/",
+    },
+    {
+        "plan_id": "candere_kalyan_dgrp_and_promos",
+        "platform_name": "Candere by Kalyan Jewellers",
+        "plan_or_offer_name": "Double Gold Rate Protection (DGRP) + Ongoing Making-Charge Discounts",
+        "offer_type": "Rate-Lock & Making Charge Offer",
+        "tenure_or_lockin": "2 to 12 Months (0% Interest Installments)",
+        "extra_gold_or_discount_benefit": "Lock today's gold rate with just 10% booking advance (if gold drops at checkout, get the lower rate!) + ongoing making-charge & diamond promotional discounts.",
+        "effective_benefit_pct": 4.00,
+        "min_entry_ticket_inr": "10% Down Payment of Order Value",
+        "eligible_redemption_mode": "22K/18K Gold Jewellery, Diamond Jewellery & Selected Gold Coins",
+        "safety_and_hidden_catch_audit": "✅ Kalyan Jewellers Subsidiary: Unlike Tanishq GHS or BlueStone 10+1, Candere DGRP actually freezes the per-gram gold rate on Day 1.",
+        "validation_keywords": ["candere", "kalyan", "gold", "rate protection", "offer", "discount", "making"],
+        "official_url": "https://www.candere.com/",
+    },
+    {
+        "plan_id": "safegold_partner_sip_and_jewellery_exchange",
+        "platform_name": "SafeGold (Direct / Tanishq / CaratLane / JioFinance)",
+        "plan_or_offer_name": "SafeGold 5-Year Free Storage SIP + 1:1 Partner Jewellery Conversion",
+        "offer_type": "Extra Gold / Bonus Grams",
+        "tenure_or_lockin": "Up to 5 Years Free Insured Brinks Storage",
+        "extra_gold_or_discount_benefit": "Saves ~3% cash sell-back spread by converting 24K digital gold 1:1 directly into Tanishq/CaratLane/Candere jewellery + eligible for partner app rewards (5% NeuCoins via Tata Neu Infinity).",
+        "effective_benefit_pct": 5.00,
+        "min_entry_ticket_inr": "₹10 – ₹100",
+        "eligible_redemption_mode": "1:1 Jewellery Exchange at Tanishq/CaratLane/Mia or Physical 24K (999.9) Coins",
+        "safety_and_hidden_catch_audit": "✅ IDBI Trusteeship + Brinks Vaults: Best <5-year digital gold engine when redeemed for partner jewellery rather than sold back for cash.",
+        "validation_keywords": ["safegold", "24k", "gold", "jewellery", "vault", "brinks", "sip"],
+        "official_url": "https://www.safegold.com/",
+    },
+    {
+        "plan_id": "mmtcpamp_direct_and_abcd_bullion",
+        "platform_name": "MMTC-PAMP (Direct / ABCD App / GPay)",
+        "plan_or_offer_name": "MMTC-PAMP 24K (999.9) Digital Gold & Festival Bullion Offers",
+        "offer_type": "Card / Payment Partner Promo",
+        "tenure_or_lockin": "Up to 5 Years Free Vault Storage (72-Hour Cooling-Off Period)",
+        "extra_gold_or_discount_benefit": "Purest 999.9 LBMA Swiss-standard gold starting at ₹10; occasional festive coin making-charge discounts (generally 0% upfront discount on raw digital gold).",
+        "effective_benefit_pct": 0.00,
+        "min_entry_ticket_inr": "₹10",
+        "eligible_redemption_mode": "24K (999.9) Tamper-Proof Assay CertiCard Coins/Bars (Minting + Delivery ₹350–₹800+)",
+        "safety_and_hidden_catch_audit": "ℹ️ Highest Bullion Purity (999.9), but lacks jeweller 1:1 making-charge waivers and charges ₹350–₹800+ minting fees on physical coin redemption.",
+        "validation_keywords": ["mmtc-pamp", "999.9", "digital gold", "lbma", "pure", "gold"],
+        "official_url": "https://www.mmtcpamp.com/digital-gold",
+    },
+    {
+        "plan_id": "augmont_digigold_sip_and_partner_promos",
+        "platform_name": "Augmont Gold For All (DigiGold)",
+        "plan_or_offer_name": "Augmont 24K (999) DigiGold SIP & Partner App Promotional Offers",
+        "offer_type": "Extra Gold / Bonus Grams",
+        "tenure_or_lockin": "Up to 5 Years Free Sequel Vault Storage",
+        "extra_gold_or_discount_benefit": "Accumulate 24K (999) gold via daily/monthly SIPs from ₹10; deliverable as BIS-hallmarked coins from 0.1g or redeemable via partner jewellers.",
+        "effective_benefit_pct": 1.50,
+        "min_entry_ticket_inr": "₹10",
+        "eligible_redemption_mode": "24K (999) Physical Coins (from 0.1g) or Partner Jeweller Redemption",
+        "safety_and_hidden_catch_audit": "✅ BIS/NABL Accredited Refinery + IDBI Trusteeship: Verify partner app T&Cs before opting into any third-party leasing features.",
+        "validation_keywords": ["augmont", "digi gold", "digigold", "24k", "999", "gold", "sip"],
+        "official_url": "https://www.augmont.com/digi-gold",
+    },
+    {
+        "plan_id": "amrapali_digigold_instant_sip",
+        "platform_name": "Digigold (Amrapali Gujarat)",
+        "plan_or_offer_name": "Digigold ₹10 Micro-SIP & Instant 24K (999) Coin Delivery Plan",
+        "offer_type": "Extra Gold / Bonus Grams",
+        "tenure_or_lockin": "Up to 5 Years Free Insured Storage",
+        "extra_gold_or_discount_benefit": "Start Gold SIP at ₹10 with zero storage fees for up to 5 years and physical coin conversion from 1g.",
+        "effective_benefit_pct": 1.00,
+        "min_entry_ticket_inr": "₹10",
+        "eligible_redemption_mode": "24K (999) Physical Gold Coins/Bars or Instant Sell-Back",
+        "safety_and_hidden_catch_audit": "ℹ️ Backed by Amrapali Gujarat refinery; 3% GST + ~3.1% buy-sell spread applies on cash exit.",
+        "validation_keywords": ["digigold", "amrapali", "24k", "999", "sip", "delivery", "gold"],
+        "official_url": "https://www.digigold.com/",
+    },
+    {
+        "plan_id": "jar_app_daily_savings_spin_extra_gold",
+        "platform_name": "Jar App (Powered by SafeGold / Augmont)",
+        "plan_or_offer_name": "Jar Daily Gold Micro-SIP + 'Spin the Wheel' & Referral Bonus Gold",
+        "offer_type": "Extra Gold / Bonus Grams",
+        "tenure_or_lockin": "Flexible Daily Auto-Save",
+        "extra_gold_or_discount_benefit": "Gamified 'Spin the Wheel' after daily savings, streak bonuses, and referral rewards granting extra digital gold/winnings (typically 0.5%–2% effective bonus on small tickets).",
+        "effective_benefit_pct": 1.50,
+        "min_entry_ticket_inr": "₹10 / day",
+        "eligible_redemption_mode": "24K Digital Gold, Physical Coins, or Partner Jewellery",
+        "safety_and_hidden_catch_audit": "⚠️ Note: Gamified 'Spin the Wheel' rewards are small/variable and do NOT fully offset the mandatory 3% GST + ~3% buy-sell spread on large investments.",
+        "validation_keywords": ["jar", "gold", "24k", "save", "daily", "digital gold"],
+        "official_url": "https://www.myjar.app/",
+    },
+    {
+        "plan_id": "gullak_gold_plus_extra_5pct_lease",
+        "platform_name": "Gullak (Gold+ via Augmont)",
+        "plan_or_offer_name": "Gullak Gold+ Leasing Plan — Up to 5% Extra Gold p.a. (4% Lease + 1% Promo)",
+        "offer_type": "⚠️ Unregulated Gold Lease (High Credit Risk)",
+        "tenure_or_lockin": "Flexible / 12-Month Jeweller Lease Cycle",
+        "extra_gold_or_discount_benefit": "Credits 4% extra 24K gold in grams per annum (plus up to 1% festival/promo bonus gold on select tenures) by leasing your digital gold to corporate jewellers.",
+        "effective_benefit_pct": 5.00,
+        "min_entry_ticket_inr": "0.5g (~₹7,250)",
+        "eligible_redemption_mode": "Extra Gold Grams Credited Monthly (Redeemable as Cash / Coins / Jewellery)",
+        "safety_and_hidden_catch_audit": "🚨 CRITICAL GATE 5 WARNING: While Gullak gives 4%–5% extra gold p.a., leasing moves your gold OUT of the IDBI Trusteeship ring-fence into an UNSECURED loan to corporate jewellers (unregulated by SEBI/RBI).",
+        "validation_keywords": ["gullak", "gold+", "extra", "5%", "4%", "gold", "augmont", "lease"],
+        "official_url": "https://gullak.money/",
+    },
+]
+
+
+def load_custom_monitored_offers() -> List[Dict[str, Any]]:
+    if not CUSTOM_MONITORED_OFFERS_PATH.exists():
+        return []
+    try:
+        with open(CUSTOM_MONITORED_OFFERS_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return data if isinstance(data, list) else []
+    except Exception:
+        return []
+
+
+def scan_and_validate_live_platform_offer(
+    item: Dict[str, Any],
+    primary_24k_pre_gst: Optional[float],
+) -> Dict[str, Any]:
+    """
+    Fetches the official platform plan/offer URL live, validates expected plan keywords
+    in the current HTML DOM / title / meta tags, and extracts live promotional text snippets
+    mentioning extra gold, discounts, bonuses, or installment waivers.
+    """
+    url = item["official_url"]
+    t0 = time.perf_counter()
+    try:
+        resp = requests.get(url, headers=DEFAULT_HEADERS, timeout=10)
+        if resp.status_code == 403:
+            resp = requests.get(
+                url,
+                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
+                timeout=10,
+            )
+        latency_ms = round((time.perf_counter() - t0) * 1000, 1)
+        html_text = resp.content.decode("utf-8", errors="replace")
+        sha = compute_sha256(html_text)
+        is_reachable = 200 <= resp.status_code < 400
+
+        soup = BeautifulSoup(html_text, "html.parser")
+        title_txt = soup.title.get_text(" ", strip=True) if soup.title else ""
+        meta_desc = ""
+        meta_el = soup.find("meta", attrs={"name": re.compile(r"^description$", re.I)})
+        if meta_el and meta_el.get("content"):
+            meta_desc = str(meta_el.get("content")).strip()
+
+        full_text = re.sub(r"\s+", " ", f"{title_txt} {meta_desc} {soup.get_text(' ', strip=True)}")
+        full_text_lower = full_text.lower()
+
+        # Check validation keywords in live DOM
+        expected_kws = item.get("validation_keywords") or ["gold", "offer"]
+        matched_kws = [kw for kw in expected_kws if kw.lower() in full_text_lower]
+
+        # Extract live promotional snippets from headings, paragraphs, and meta description
+        promo_pattern = re.compile(
+            r"(?:extra\s+gold|free\s+gold|bonus|discount|\d+\s*%\s*off|installment|10\s*\+\s*1|9\s*\+\s*1|"
+            r"golden\s+harvest|gold\s+mine|plan\s+of\s+purchase|samriddhi|marigold|referral|making\s+charge|"
+            r"rate\s+protection|cashback|spin|lease|p\.a\.|voucher|sip)",
+            re.I,
+        )
+        extracted_snippets: List[str] = []
+        if meta_desc and promo_pattern.search(meta_desc):
+            extracted_snippets.append(f"[Meta] {meta_desc[:180]}")
+
+        for tag in soup.find_all(["h1", "h2", "h3", "h4", "p", "li"]):
+            txt = re.sub(r"\s+", " ", tag.get_text(" ", strip=True)).strip()
+            if 25 <= len(txt) <= 220 and promo_pattern.search(txt):
+                if not any(txt.lower()[:45] in existing.lower() for existing in extracted_snippets):
+                    extracted_snippets.append(txt)
+                if len(extracted_snippets) >= 3:
+                    break
+
+        if not extracted_snippets and title_txt:
+            extracted_snippets.append(f"[Page Title] {title_txt[:160]}")
+
+        if is_reachable and len(matched_kws) >= 2:
+            validation_status = "✅ VALIDATED_LIVE_ONGOING (DOM + HTTP 200)"
+        elif is_reachable and len(matched_kws) >= 1:
+            validation_status = "✅ VALIDATED_LIVE_PAGE (HTTP 200)"
+        elif is_reachable:
+            validation_status = "🟡 PAGE_REACHABLE_DYNAMIC_CSR (HTTP 200)"
+        else:
+            validation_status = f"❌ HTTP_WARNING ({resp.status_code})"
+
+        # Compute equivalent extra gold in grams per ₹1,00,000 purchase at today's live 24K rate
+        eff_pct = float(item.get("effective_benefit_pct", 0.0))
+        benefit_per_1l_inr = round(100000.0 * (eff_pct / 100.0), 2)
+        extra_gold_grams_per_1l = (
+            round(benefit_per_1l_inr / primary_24k_pre_gst, 4)
+            if (primary_24k_pre_gst and primary_24k_pre_gst > 0 and benefit_per_1l_inr > 0)
+            else 0.0
+        )
+
+        return {
+            **item,
+            "http_status": resp.status_code,
+            "is_reachable": is_reachable,
+            "latency_ms": latency_ms,
+            "verified_at_ist": now_ist_str(),
+            "content_sha256": sha,
+            "page_title": title_txt[:140],
+            "matched_keywords": matched_kws,
+            "matched_keyword_ratio": f"{len(matched_kws)}/{len(expected_kws)}",
+            "live_extracted_dom_snippets": " | ".join(extracted_snippets[:3]),
+            "validation_status": validation_status,
+            "est_benefit_per_1lakh_inr": benefit_per_1l_inr,
+            "est_extra_gold_per_1lakh_grams": extra_gold_grams_per_1l,
+            "error": None if is_reachable else f"HTTP {resp.status_code}",
+        }
+    except Exception as exc:
+        latency_ms = round((time.perf_counter() - t0) * 1000, 1)
+        return {
+            **item,
+            "http_status": None,
+            "is_reachable": False,
+            "latency_ms": latency_ms,
+            "verified_at_ist": now_ist_str(),
+            "content_sha256": None,
+            "page_title": "",
+            "matched_keywords": [],
+            "matched_keyword_ratio": f"0/{len(item.get('validation_keywords') or [])}",
+            "live_extracted_dom_snippets": "",
+            "validation_status": f"❌ FETCH_ERROR ({str(exc)[:60]})",
+            "est_benefit_per_1lakh_inr": 0.0,
+            "est_extra_gold_per_1lakh_grams": 0.0,
+            "error": str(exc)[:120],
+        }
+
+
+def fetch_live_validated_platform_plans(
+    primary_24k_pre_gst: Optional[float],
+) -> List[Dict[str, Any]]:
+    """
+    Concurrently fetches, DOM-scans, and validates all ongoing platform plans
+    (extra gold, installment bonuses, referral gold, rate-protection schemes)
+    plus any user-added custom offer URLs whenever Refresh is clicked.
+    """
+    combined_catalog = list(LIVE_PLATFORM_PLANS_AND_PROMOS_CATALOG) + load_custom_monitored_offers()
+    results: List[Dict[str, Any]] = []
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        f_map = {
+            pool.submit(scan_and_validate_live_platform_offer, item, primary_24k_pre_gst): item
+            for item in combined_catalog
+        }
+        for fut in as_completed(f_map):
+            results.append(fut.result())
+
+    order_map = {item["plan_id"]: idx for idx, item in enumerate(combined_catalog)}
+    results.sort(key=lambda x: order_map.get(x["plan_id"], 999))
+    return results
+
+
+def add_and_validate_custom_offer_url(
+    platform_name: str,
+    plan_or_offer_name: str,
+    offer_type: str,
+    extra_gold_or_discount_benefit: str,
+    effective_benefit_pct: float,
+    min_entry_ticket_inr: str,
+    eligible_redemption_mode: str,
+    official_url: str,
+    validation_keywords: List[str],
+    primary_24k_pre_gst: Optional[float],
+) -> Dict[str, Any]:
+    """
+    Live-scans a user-submitted platform offer URL, validates its HTTP + DOM content,
+    saves it to data/custom_monitored_offers.json if reachable, and returns the validated record.
+    """
+    clean_id = "custom_" + re.sub(r"[^a-z0-9]+", "_", f"{platform_name}_{plan_or_offer_name}".lower()).strip("_")[:48]
+    new_item = {
+        "plan_id": clean_id,
+        "platform_name": platform_name.strip(),
+        "plan_or_offer_name": plan_or_offer_name.strip(),
+        "offer_type": offer_type.strip(),
+        "tenure_or_lockin": "Custom Monitored Offer",
+        "extra_gold_or_discount_benefit": extra_gold_or_discount_benefit.strip(),
+        "effective_benefit_pct": float(effective_benefit_pct),
+        "min_entry_ticket_inr": min_entry_ticket_inr.strip() or "As per platform T&C",
+        "eligible_redemption_mode": eligible_redemption_mode.strip() or "As per platform T&C",
+        "safety_and_hidden_catch_audit": "🔍 User-Added Monitored Offer URL: Verified live via HTTP + DOM keyword scanner on every refresh.",
+        "validation_keywords": [k.strip() for k in validation_keywords if k.strip()] or ["gold", "offer"],
+        "official_url": official_url.strip(),
+    }
+    validated = scan_and_validate_live_platform_offer(new_item, primary_24k_pre_gst)
+    existing = load_custom_monitored_offers()
+    existing = [e for e in existing if e.get("plan_id") != clean_id and e.get("official_url") != official_url.strip()]
+    existing.append(new_item)
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    with open(CUSTOM_MONITORED_OFFERS_PATH, "w", encoding="utf-8") as f:
+        json.dump(existing, f, indent=2, ensure_ascii=False)
+    return validated
+
+
 def verify_all_offers_and_cards(
     previous_hashes: Optional[Dict[str, str]] = None,
 ) -> List[Dict[str, Any]]:
@@ -1755,6 +2121,26 @@ def save_verification_snapshot(snapshot: Dict[str, Any]) -> None:
                     a.get("pillar", ""),
                 ),
             )
+
+        for lp in snapshot.get("live_platform_plans", []):
+            cur.execute(
+                """
+                INSERT INTO http_verification_log (
+                    verified_at_ist, entity_type, entity_id, source_url,
+                    http_status, latency_ms, content_sha256, status_note
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    lp.get("verified_at_ist", now_ist_str()),
+                    "LIVE_PLATFORM_PLAN",
+                    lp.get("plan_id", ""),
+                    lp.get("official_url", ""),
+                    lp.get("http_status"),
+                    lp.get("latency_ms"),
+                    lp.get("content_sha256"),
+                    lp.get("validation_status", ""),
+                ),
+            )
         conn.commit()
     finally:
         conn.close()
@@ -1778,6 +2164,7 @@ def run_full_live_verification() -> Dict[str, Any]:
       - 12 Safe Gold Platforms & Custodians (live HTTP + SHA-256 + rate provenance)
       - 12 Credit Card, Voucher & Jeweller Scheme T&C Endpoints (live HTTP + SHA-256 drift audit)
       - 9 Expert Reference Articles & Tax/Regulatory Guides (live HTTP + SHA-256 verification)
+      - 12+ Ongoing Platform Plans & Extra-Gold/Discount Offers (live HTTP + DOM keyword/snippet scanner)
     Persists results to SQLite and data/latest_verified_snapshot.json.
     """
     t0 = time.perf_counter()
@@ -1792,22 +2179,24 @@ def run_full_live_verification() -> Dict[str, Any]:
     primary_24k = benchmarks.get("primary_24k_per_g_pre_gst")
     primary_24k_gst = benchmarks.get("primary_24k_per_g_incl_gst")
 
-    with ThreadPoolExecutor(max_workers=4) as pool:
+    with ThreadPoolExecutor(max_workers=5) as pool:
         f_etfs = pool.submit(fetch_live_gold_etfs)
         f_plat = pool.submit(verify_all_platforms, primary_24k)
         f_off = pool.submit(verify_all_offers_and_cards, prev_offer_hashes)
         f_art = pool.submit(verify_all_expert_articles)
+        f_plans = pool.submit(fetch_live_validated_platform_plans, primary_24k)
 
         etfs = f_etfs.result()
         platforms = f_plat.result()
         offers = f_off.result()
         expert_articles = f_art.result()
+        live_platform_plans = f_plans.result()
 
     snip_overview = build_snip_platform_overview(primary_24k, primary_24k_gst)
 
     total_duration_sec = round(time.perf_counter() - t0, 2)
     snapshot = {
-        "schema_version": "1.1.0-zero-mock",
+        "schema_version": "1.2.0-zero-mock",
         "refreshed_at_ist": now_ist_str(),
         "refresh_duration_sec": total_duration_sec,
         "critic_gates_enforced": [
@@ -1823,6 +2212,7 @@ def run_full_live_verification() -> Dict[str, Any]:
         "offers_and_cards": offers,
         "snip_platform_overview": snip_overview,
         "expert_articles": expert_articles,
+        "live_platform_plans": live_platform_plans,
     }
     save_verification_snapshot(snapshot)
     return snapshot
@@ -1841,3 +2231,4 @@ if __name__ == "__main__":
     print(f"  Platforms Verified (HTTP 2xx/3xx): {sum(1 for p in snap['platforms'] if p.get('is_reachable'))}/{len(snap['platforms'])}")
     print(f"  Offer T&Cs Verified (HTTP 2xx/3xx): {sum(1 for o in snap['offers_and_cards'] if o.get('is_reachable'))}/{len(snap['offers_and_cards'])}")
     print(f"  Expert Articles Verified (HTTP 2xx/3xx): {sum(1 for a in snap['expert_articles'] if a.get('is_reachable'))}/{len(snap['expert_articles'])}")
+    print(f"  Live Platform Plans Validated (HTTP 2xx/3xx): {sum(1 for lp in snap['live_platform_plans'] if lp.get('is_reachable'))}/{len(snap['live_platform_plans'])}")

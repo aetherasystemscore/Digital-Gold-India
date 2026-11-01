@@ -16,15 +16,19 @@ import pandas as pd
 import streamlit as st
 
 from gold_verification_engine import (
+    LIVE_PLATFORM_PLANS_AND_PROMOS_CATALOG,
     SNAPSHOT_PATH,
     SQLITE_DB_PATH,
     VERIFIED_EXPERT_ARTICLES_AND_GUIDES,
     VERIFIED_OFFERS_AND_CARDS_REGISTRY,
+    add_and_validate_custom_offer_url,
     build_snip_platform_overview,
     calculate_net_landed_cost_matrix,
     calculate_same_quantity_etf_comparison,
+    fetch_live_validated_platform_plans,
     load_latest_snapshot,
     run_full_live_verification,
+    save_verification_snapshot,
 )
 
 st.set_page_config(
@@ -107,7 +111,7 @@ def main() -> None:
         st.caption("Zero-Mock Verifiable India Gold & Offer Tracker")
 
         if st.button("🔄 Refresh & Verify All Live Sources Now", type="primary", use_container_width=True):
-            with st.spinner("Probing live IBJA, COMEX/INR, 7 NSE Gold ETFs, 12 Platforms, 12 Bank/Scheme T&Cs & 9 Expert Articles..."):
+            with st.spinner("Probing live IBJA, COMEX/INR, 7 NSE Gold ETFs, 12 Platforms, 12 Bank/Scheme T&Cs, 9 Expert Articles & 12+ Ongoing Platform Plans..."):
                 snapshot = run_full_live_verification()
             st.success(f"Verified live in {snapshot.get('refresh_duration_sec')}s!")
 
@@ -116,6 +120,7 @@ def main() -> None:
         platforms = snapshot.get("platforms", [])
         offers = snapshot.get("offers_and_cards", [])
         expert_articles = snapshot.get("expert_articles") or VERIFIED_EXPERT_ARTICLES_AND_GUIDES
+        live_platform_plans = snapshot.get("live_platform_plans") or LIVE_PLATFORM_PLANS_AND_PROMOS_CATALOG
 
         st.markdown("---")
         st.markdown("### 🕒 Latest Verification Stamp")
@@ -126,11 +131,13 @@ def main() -> None:
         plat_ok = sum(1 for p in platforms if p.get("is_reachable"))
         off_ok = sum(1 for o in offers if o.get("is_reachable"))
         art_ok = sum(1 for a in expert_articles if a.get("is_reachable"))
+        plan_ok = sum(1 for lp in live_platform_plans if lp.get("is_reachable"))
 
         st.metric("Live NSE Gold ETF Quotes", f"{etf_ok} / {len(etfs)} Verified")
         st.metric("Platform Custodian URLs (HTTP 2xx)", f"{plat_ok} / {len(platforms)} Reachable")
         st.metric("Bank & Scheme T&C URLs (HTTP 2xx)", f"{off_ok} / {len(offers)} Reachable")
         st.metric("Expert Reference Articles (HTTP 2xx)", f"{art_ok} / {len(expert_articles)} Verified")
+        st.metric("Ongoing Platform Plans & Promos", f"{plan_ok} / {len(live_platform_plans)} Validated")
 
         st.markdown("---")
         st.markdown("### 🛡️ Critic's 5 Active Gates")
@@ -157,13 +164,14 @@ def main() -> None:
         unsafe_allow_html=True,
     )
 
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
         [
             "📈 1. Live Gold Benchmarks & NSE ETFs",
             "🛡️ 2. Safe Gold Platforms & Custodian Audit",
             "💳 3. Verifiable Card, Voucher & Scheme Offers",
             "🧮 4. Net Landed Cost & Card Stack Calculator",
             "🔍 5. SHA-256 & HTTP Provenance Log",
+            "🎁 6. Live Platform Plans & Extra-Gold Offers",
         ]
     )
 
@@ -775,6 +783,32 @@ def main() -> None:
                     "Official URL": o.get("official_url"),
                 }
             )
+        for a in expert_articles:
+            audit_records.append(
+                {
+                    "Category": "EXPERT_ARTICLE",
+                    "Entity": a.get("title"),
+                    "HTTP Status": a.get("http_status"),
+                    "Latency (ms)": a.get("latency_ms"),
+                    "Extraction / Audit Mode": a.get("pillar"),
+                    "Verified At (IST)": a.get("verified_at_ist"),
+                    "SHA-256 Content Hash": a.get("content_sha256"),
+                    "Official URL": a.get("official_url"),
+                }
+            )
+        for lp in live_platform_plans:
+            audit_records.append(
+                {
+                    "Category": "LIVE_PLATFORM_PLAN",
+                    "Entity": f"{lp.get('platform_name')} — {lp.get('plan_or_offer_name')}",
+                    "HTTP Status": lp.get("http_status"),
+                    "Latency (ms)": lp.get("latency_ms"),
+                    "Extraction / Audit Mode": lp.get("validation_status"),
+                    "Verified At (IST)": lp.get("verified_at_ist"),
+                    "SHA-256 Content Hash": lp.get("content_sha256"),
+                    "Official URL": lp.get("official_url"),
+                }
+            )
 
         audit_df = pd.DataFrame(audit_records)
         st.dataframe(
@@ -814,6 +848,277 @@ def main() -> None:
                 st.dataframe(hist_df, use_container_width=True, hide_index=True)
             finally:
                 conn.close()
+
+    # ========================================================================
+    # TAB 6 (LAST TAB): LIVE VALIDATED PLATFORM PLANS & EXTRA-GOLD OFFERS
+    # ========================================================================
+    with tab6:
+        st.subheader("6.1 Live-Validated Platform Plans, Extra-Gold & Installment Bonus Tracker")
+        st.markdown(
+            """
+            <div class="gate-banner">
+            <b>🔍 How Live Offer Validation Works on Refresh:</b> When you click <b>Refresh</b> (either in the Sidebar or via the button below), the verification engine concurrently probes the official URL of every monitored Jeweller Plan & Digital Gold Platform Offer, parses the live HTML DOM (<code>&lt;title&gt;</code>, meta tags, and promotional headings/paragraphs), verifies active offer keywords (<code>10+1</code>, <code>9+1</code>, <code>Golden Harvest</code>, <code>Golden Bloom</code>, <code>Samriddhi</code>, <code>Marigold</code>, <code>PoP!</code>, <code>DGRP</code>, <code>SIP</code>, <code>Extra Gold</code>), logs the cryptographic <code>SHA-256</code> fingerprint, and computes your exact <b>Extra 24K Gold Equivalent (grams)</b> at today's live gold rate.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        act_col1, act_col2 = st.columns([1.4, 2.6])
+        with act_col1:
+            if st.button(
+                "🔄 Fetch & Validate Latest Ongoing Platform Offers Now",
+                type="primary",
+                use_container_width=True,
+                key="btn_refresh_tab6_offers",
+            ):
+                with st.spinner("Scanning live platform DOMs, validating ongoing plans & extra-gold promos, and updating snapshot..."):
+                    fresh_plans = fetch_live_validated_platform_plans(p24_pre)
+                    snapshot["live_platform_plans"] = fresh_plans
+                    snapshot["refreshed_at_ist"] = fresh_plans[0].get("verified_at_ist") if fresh_plans else snapshot.get("refreshed_at_ist")
+                    save_verification_snapshot(snapshot)
+                    live_platform_plans = fresh_plans
+                st.success(
+                    f"Published {sum(1 for lp in live_platform_plans if lp.get('is_reachable'))}/{len(live_platform_plans)} live-validated platform offers!"
+                )
+        with act_col2:
+            st.caption(
+                f"**Last Offer Scan:** `{snapshot.get('refreshed_at_ist', 'N/A')}` | "
+                f"**Live 24K Rate (incl. 3% GST) used for Extra-Gold conversion:** `{fmt_inr(p24_gst)}/g` | "
+                "**Strict Gate 5 Enforcement:** Unregulated gold leasing schemes (`Gullak Gold+`) are explicitly separated from safe jeweller installment/referral plans."
+            )
+
+        # KPI Metrics for Tab 6
+        total_plans = len(live_platform_plans)
+        reachable_plans = sum(1 for lp in live_platform_plans if lp.get("is_reachable"))
+        dom_active_plans = sum(
+            1
+            for lp in live_platform_plans
+            if "VALIDATED_LIVE_ONGOING" in str(lp.get("validation_status", ""))
+            or "LIVE_VALIDATED" in str(lp.get("validation_status", ""))
+        )
+        safe_plans = [
+            lp
+            for lp in live_platform_plans
+            if "Unregulated" not in str(lp.get("offer_type", ""))
+        ]
+        max_safe_pct = max((float(lp.get("effective_benefit_pct", 0.0)) for lp in safe_plans), default=8.33)
+        max_safe_extra_g = round((100000.0 * (max_safe_pct / 100.0)) / p24_gst, 3) if p24_gst else 0.0
+
+        k1, k2, k3, k4 = st.columns(4)
+        with k1:
+            st.metric(
+                "Monitored Platform Plans",
+                f"{reachable_plans} / {total_plans} HTTP 200 OK",
+                help="Count of platform offer pages returning live HTTP 200 OK during the latest scan.",
+            )
+        with k2:
+            st.metric(
+                "DOM Keyword-Validated Active",
+                f"{dom_active_plans} / {total_plans} Confirmed",
+                help="Plans where live HTML DOM text explicitly matched expected scheme/offer keywords.",
+            )
+        with k3:
+            st.metric(
+                "Top Safe Jeweller Plan Discount",
+                f"{max_safe_pct:.2f}%",
+                delta="BlueStone 10+1 / Tanishq GHS / CaratLane 9+1",
+                delta_color="normal",
+            )
+        with k4:
+            st.metric(
+                "Max Extra 24K Gold per ₹1 Lakh",
+                f"+{max_safe_extra_g:.3f} g",
+                help=f"Equivalent bonus 24K gold on a ₹1,00,000 planned purchase at today's live rate ({fmt_inr(p24_gst)}/g incl. GST).",
+            )
+
+        st.markdown("---")
+        st.subheader("6.2 Interactive Extra-Gold & Plan Benefit Simulator (Live Validated Offers)")
+
+        sim_c1, sim_c2 = st.columns([1.2, 2.8])
+        with sim_c1:
+            plan_budget_inr = st.number_input(
+                "Enter Total Planned Purchase / Cumulative SIP Budget (₹):",
+                min_value=1000.0,
+                max_value=5000000.0,
+                value=100000.0,
+                step=10000.0,
+                key="tab6_plan_budget_inr",
+                help="Simulates the rupee discount and equivalent extra 24K gold grams across all validated ongoing platform plans.",
+            )
+        with sim_c2:
+            offer_type_options = ["All Validated Offer Types"] + sorted(
+                {str(lp.get("offer_type", "Other")) for lp in live_platform_plans}
+            )
+            selected_offer_type = st.selectbox(
+                "Filter by Plan / Extra-Gold Mechanism:",
+                offer_type_options,
+                key="tab6_offer_type_filter",
+            )
+
+        filtered_plans = (
+            live_platform_plans
+            if selected_offer_type == "All Validated Offer Types"
+            else [lp for lp in live_platform_plans if lp.get("offer_type") == selected_offer_type]
+        )
+
+        plan_table_rows = []
+        for lp in filtered_plans:
+            eff_pct = float(lp.get("effective_benefit_pct") or 0.0)
+            est_rupee_benefit = round(plan_budget_inr * (eff_pct / 100.0), 2)
+            est_extra_gold_g = (
+                round(est_rupee_benefit / p24_gst, 4) if (p24_gst and p24_gst > 0) else 0.0
+            )
+            plan_table_rows.append(
+                {
+                    "Platform": lp.get("platform_name"),
+                    "Plan / Ongoing Offer": lp.get("plan_or_offer_name"),
+                    "Offer Mechanism": lp.get("offer_type"),
+                    "Tenure / Lock-In": lp.get("tenure_or_lockin"),
+                    "Extra Gold / Discount Structure": lp.get("extra_gold_or_discount_benefit"),
+                    "Effective Benefit (%)": eff_pct,
+                    f"Est. Benefit on {fmt_inr(plan_budget_inr, 0)} (₹)": est_rupee_benefit,
+                    "Equiv. Extra 24K Gold (g)": est_extra_gold_g,
+                    "Min. Entry Ticket": lp.get("min_entry_ticket_inr"),
+                    "Eligible Redemption Mode": lp.get("eligible_redemption_mode"),
+                    "Live Validation Status": lp.get("validation_status", "Pending Refresh"),
+                    "DOM Keyword Match": lp.get("matched_keyword_ratio", "N/A"),
+                    "HTTP Status": f"HTTP {lp.get('http_status')}" if lp.get("http_status") else "Pending",
+                    "Verified At (IST)": lp.get("verified_at_ist", snapshot.get("refreshed_at_ist")),
+                    "Official Offer URL": lp.get("official_url"),
+                }
+            )
+
+        st.dataframe(
+            pd.DataFrame(plan_table_rows),
+            column_config={
+                "Official Offer URL": st.column_config.LinkColumn("Verify Live Offer ↗"),
+            },
+            use_container_width=True,
+            hide_index=True,
+        )
+
+        st.markdown("#### 🔍 6.3 Live DOM-Extracted Offer Snippets, Hidden-Catch Audit & SHA-256 Proofs")
+        st.caption(
+            "Expand any ongoing plan below to inspect the live promotional text extracted directly from the platform's website during the latest refresh, along with the Expert & Critic hidden-catch audit:"
+        )
+
+        for lp in filtered_plans:
+            eff_pct = float(lp.get("effective_benefit_pct") or 0.0)
+            est_rupee_benefit = round(plan_budget_inr * (eff_pct / 100.0), 2)
+            est_extra_gold_g = (
+                round(est_rupee_benefit / p24_gst, 4) if (p24_gst and p24_gst > 0) else 0.0
+            )
+            val_badge = lp.get("validation_status", "Pending Refresh")
+            header_label = (
+                f"{lp.get('platform_name')} — {lp.get('plan_or_offer_name')} | "
+                f"Benefit: ~{eff_pct:.2f}% (+{est_extra_gold_g:.3f}g / {fmt_inr(est_rupee_benefit, 0)}) | {val_badge}"
+            )
+            with st.expander(header_label):
+                c_left, c_right = st.columns(2)
+                with c_left:
+                    st.write(f"- **Platform:** {lp.get('platform_name')}")
+                    st.write(f"- **Offer / Plan Name:** `{lp.get('plan_or_offer_name')}`")
+                    st.write(f"- **Mechanism:** `{lp.get('offer_type')}`")
+                    st.write(f"- **Tenure / Lock-In:** `{lp.get('tenure_or_lockin')}`")
+                    st.write(f"- **Min. Entry Ticket:** `{lp.get('min_entry_ticket_inr')}`")
+                    st.write(f"- **Extra Gold / Discount Benefit:** {lp.get('extra_gold_or_discount_benefit')}")
+                    st.write(f"- **Eligible Redemption Mode:** {lp.get('eligible_redemption_mode')}")
+                with c_right:
+                    st.write(
+                        f"- **Simulated Benefit on `{fmt_inr(plan_budget_inr, 0)}`:** "
+                        f"**`{fmt_inr(est_rupee_benefit)}`** (≈ **`+{est_extra_gold_g:.4f}g`** of 24K Gold at live rate)"
+                    )
+                    st.write(
+                        f"- **Live HTTP Status:** `HTTP {lp.get('http_status')}` ({lp.get('latency_ms')} ms) | "
+                        f"**Verified At:** `{lp.get('verified_at_ist')}`"
+                    )
+                    st.write(
+                        f"- **DOM Keywords Matched ({lp.get('matched_keyword_ratio', 'N/A')}):** "
+                        f"`{', '.join(lp.get('matched_keywords') or []) or 'Verified via HTTP 200'}`"
+                    )
+                    st.write(f"- **Live Page `<title>`:** `{lp.get('page_title') or 'N/A'}`")
+                    st.write(f"- **SHA-256 Content Hash:** `{(lp.get('content_sha256') or 'N/A')[:32]}...`")
+                    st.markdown(f"- **Official Offer Page:** [{lp.get('official_url')}]({lp.get('official_url')})")
+
+                snippets = lp.get("live_extracted_dom_snippets")
+                if snippets:
+                    st.info(f"**📄 Live Extracted Website Promo Snippets (DOM):** {snippets}")
+                st.warning(f"**🛡️ Critic Safety & Hidden-Catch Audit:** {lp.get('safety_and_hidden_catch_audit')}")
+
+        st.markdown("---")
+        with st.expander("➕ 6.4 Add & Live-Validate a Custom Platform / Festival Offer URL (Auto-Tracked on Refresh)"):
+            st.caption(
+                "Found a new festive extra-gold offer (e.g., Akshaya Tritiya, Dhanteras, or a new jeweller scheme)? "
+                "Paste its official URL below. The engine will immediately probe the live webpage, verify the DOM keywords, compute its SHA-256 hash, and include it in every future **Refresh**."
+            )
+            with st.form("add_custom_offer_form"):
+                fc1, fc2, fc3 = st.columns(3)
+                with fc1:
+                    c_plat = st.text_input("Platform / Jeweller Name *", placeholder="e.g., Kalyan Jewellers / Joyalukkas")
+                    c_name = st.text_input("Plan or Offer Name *", placeholder="e.g., Akshaya Tritiya Extra 50mg Gold Offer")
+                    c_type = st.selectbox(
+                        "Offer Mechanism *",
+                        [
+                            "Festive Extra Gold / Promo Bonus",
+                            "Installment Bonus Plan (10+1 / 11+1)",
+                            "Making Charge Discount / Waiver",
+                            "Referral Extra Gold Bonus",
+                            "Digital Gold SIP Bonus",
+                        ],
+                    )
+                with fc2:
+                    c_benefit = st.text_input(
+                        "Extra Gold / Discount Benefit Description *",
+                        placeholder="e.g., Free 100mg 24K gold on ₹25,000 purchase",
+                    )
+                    c_pct = st.number_input(
+                        "Estimated Effective Benefit (%)",
+                        min_value=0.0,
+                        max_value=25.0,
+                        value=3.0,
+                        step=0.25,
+                    )
+                    c_min = st.text_input("Minimum Ticket Size", value="₹1,000")
+                with fc3:
+                    c_url = st.text_input("Official Verification URL (https://...) *", placeholder="https://...")
+                    c_kws = st.text_input(
+                        "Expected DOM Validation Keywords (comma-separated)",
+                        value="gold, offer, discount, scheme",
+                    )
+                    c_redemp = st.text_input("Eligible Redemption Mode", value="Jewellery / 24K Gold Coin")
+
+                submitted = st.form_submit_button("🔍 Live-Scan URL & Publish to Validated Offers")
+                if submitted:
+                    if not c_plat.strip() or not c_name.strip() or not c_url.strip().startswith("http"):
+                        st.error("Please provide a valid Platform Name, Offer Name, and `https://` Official URL.")
+                    else:
+                        with st.spinner(f"Live-probing {c_url.strip()} and extracting DOM snippets..."):
+                            kw_list = [k.strip() for k in c_kws.split(",") if k.strip()]
+                            validated_custom = add_and_validate_custom_offer_url(
+                                platform_name=c_plat,
+                                plan_or_offer_name=c_name,
+                                offer_type=c_type,
+                                extra_gold_or_discount_benefit=c_benefit or c_name,
+                                effective_benefit_pct=c_pct,
+                                min_entry_ticket_inr=c_min,
+                                eligible_redemption_mode=c_redemp,
+                                official_url=c_url,
+                                validation_keywords=kw_list,
+                                primary_24k_pre_gst=p24_pre,
+                            )
+                            # Refresh live_platform_plans in snapshot
+                            snapshot["live_platform_plans"] = fetch_live_validated_platform_plans(p24_pre)
+                            save_verification_snapshot(snapshot)
+                        if validated_custom.get("is_reachable"):
+                            st.success(
+                                f"✅ Live-Validated `{c_name}` (`HTTP {validated_custom.get('http_status')}`, "
+                                f"Keywords matched: `{validated_custom.get('matched_keyword_ratio')}`, "
+                                f"SHA-256: `{(validated_custom.get('content_sha256') or '')[:16]}...`) and added to Refresh pipeline!"
+                            )
+                        else:
+                            st.warning(
+                                f"⚠️ Added to custom monitor list, but live probe returned `{validated_custom.get('validation_status')}`. Verify the URL."
+                            )
 
 
 if __name__ == "__main__":

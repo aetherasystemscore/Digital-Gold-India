@@ -32,7 +32,12 @@ A **Zero-Artificial-Data** Python/Streamlit application that tracks safe ways to
    - **Same-Rupee-Budget Calculator:** Ranks all 10 channels by **Net Landed Cost per Gram of 24K Equivalent** for any ₹ investment amount.
 
 5. **🔍 Cryptographic `SHA-256` & HTTP Provenance Audit Log (`Tab 5`)**
-   - Every benchmark, ETF, platform, and bank T&C URL is probed live and logged with `http_status`, `latency_ms`, `verified_at_ist`, and `content_sha256` in both [`data/latest_verified_snapshot.json`](data/latest_verified_snapshot.json) and SQLite (`data/gold_audit_history.db`).
+   - Every benchmark, ETF, platform, bank T&C, expert article, and live platform plan URL is probed live and logged with `http_status`, `latency_ms`, `verified_at_ist`, and `content_sha256` in both [`data/latest_verified_snapshot.json`](data/latest_verified_snapshot.json) and SQLite (`data/gold_audit_history.db`).
+
+6. **🎁 Live Platform Plans & Extra-Gold Offers — Auto-Validated on Refresh (`Tab 6`)**
+   - Concurrently probes and DOM-scans **12+ ongoing Jeweller & Digital Gold Platform Plans** (`BlueStone 10+1 Gold Mine`, `Malabar Golden Bloom 11-Month Plan`, `Tanishq Golden Harvest (GHS)`, `CaratLane PoP! 9+1 Plan`, `Senco Gold myDigiGold Samriddhi & Referral + Marigold`, `Candere Double Gold Rate Protection (DGRP)`, `SafeGold 5-Yr Free Storage & Partner Offers`, `MMTC-PAMP 999.9 Digital Gold`, `Augmont 24K DigiGold SIP`, `Digigold Amrapali Gujarat Gold SIP`, `Jar App Daily Gold Savings & Spin-the-Wheel Extra Gold`, and `Gullak Gold+ 4%–5% Extra Gold Lease — Risk Flagged`).
+   - Extracts live webpage `<title>`, meta descriptions, and promotional sentences from the HTML DOM, verifies expected plan keywords (`10+1`, `9+1`, `Golden Harvest`, `Golden Bloom`, `Samriddhi`, `Marigold`, `PoP!`, `DGRP`, `SIP`, `Extra Gold`), and computes the **Equivalent Extra 24K Gold (grams)** and **Rupee Discount (₹)** at today's live gold rate.
+   - Includes an interactive **➕ Add & Live-Validate a Custom Platform / Festival Offer URL** tool that immediately probes any new festive/platform promo URL and persists it to `data/custom_monitored_offers.json` so it is re-validated on every future refresh.
 
 ---
 
@@ -44,7 +49,7 @@ pip install -r requirements.txt
 # 1. Run live verification refresh (updates data/latest_verified_snapshot.json & SQLite DB)
 python gold_verification_engine.py --refresh
 
-# 2. Launch the interactive 5-tab Streamlit dashboard
+# 2. Launch the interactive 6-tab Streamlit dashboard
 streamlit run app.py
 ```
 

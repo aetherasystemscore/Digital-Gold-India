@@ -18,7 +18,9 @@ import streamlit as st
 from gold_verification_engine import (
     SNAPSHOT_PATH,
     SQLITE_DB_PATH,
+    VERIFIED_EXPERT_ARTICLES_AND_GUIDES,
     VERIFIED_OFFERS_AND_CARDS_REGISTRY,
+    build_snip_platform_overview,
     calculate_net_landed_cost_matrix,
     calculate_same_quantity_etf_comparison,
     load_latest_snapshot,
@@ -105,7 +107,7 @@ def main() -> None:
         st.caption("Zero-Mock Verifiable India Gold & Offer Tracker")
 
         if st.button("🔄 Refresh & Verify All Live Sources Now", type="primary", use_container_width=True):
-            with st.spinner("Probing live IBJA, COMEX/INR, 7 NSE Gold ETFs, 10 Platforms & 11 Bank/Scheme T&Cs..."):
+            with st.spinner("Probing live IBJA, COMEX/INR, 7 NSE Gold ETFs, 12 Platforms, 12 Bank/Scheme T&Cs & 9 Expert Articles..."):
                 snapshot = run_full_live_verification()
             st.success(f"Verified live in {snapshot.get('refresh_duration_sec')}s!")
 
@@ -113,6 +115,7 @@ def main() -> None:
         etfs = snapshot.get("nse_gold_etfs", [])
         platforms = snapshot.get("platforms", [])
         offers = snapshot.get("offers_and_cards", [])
+        expert_articles = snapshot.get("expert_articles") or VERIFIED_EXPERT_ARTICLES_AND_GUIDES
 
         st.markdown("---")
         st.markdown("### 🕒 Latest Verification Stamp")
@@ -122,10 +125,12 @@ def main() -> None:
         etf_ok = sum(1 for e in etfs if e.get("price") is not None)
         plat_ok = sum(1 for p in platforms if p.get("is_reachable"))
         off_ok = sum(1 for o in offers if o.get("is_reachable"))
+        art_ok = sum(1 for a in expert_articles if a.get("is_reachable"))
 
         st.metric("Live NSE Gold ETF Quotes", f"{etf_ok} / {len(etfs)} Verified")
         st.metric("Platform Custodian URLs (HTTP 2xx)", f"{plat_ok} / {len(platforms)} Reachable")
         st.metric("Bank & Scheme T&C URLs (HTTP 2xx)", f"{off_ok} / {len(offers)} Reachable")
+        st.metric("Expert Reference Articles (HTTP 2xx)", f"{art_ok} / {len(expert_articles)} Verified")
 
         st.markdown("---")
         st.markdown("### 🛡️ Critic's 5 Active Gates")
@@ -295,6 +300,91 @@ def main() -> None:
             column_config={
                 "Yahoo Quote URL": st.column_config.LinkColumn("Verify Yahoo Finance ↗"),
                 "NSE Quote URL": st.column_config.LinkColumn("Verify NSE India ↗"),
+            },
+            use_container_width=True,
+            hide_index=True,
+        )
+
+        st.markdown("---")
+        st.subheader(
+            "1.3 Expert Gold Buying Techniques: ≤5-Year Jewellery Horizon vs. Long-Term Investment (SGB / Gold ETF & 12.5% LTCG Tax Harvesting)"
+        )
+
+        # Refined Expert Statement Callout
+        st.markdown(
+            """
+            <div class="gate-banner">
+            <b>🏛️ Refined Gold Buying Expert Statement (Institutional & Tax-Verified Framework):</b><br>
+            1️⃣ <b>Short-to-Medium Horizon (≤ 5 Years — Planned Jewellery Redemption):</b> If your goal is to purchase gold within a <b>5-year window</b> (after which Digital Gold providers generally mandate physical redemption or levy a ~0.05%/month vault storage fee), accumulating Digital Gold on <b>Jeweller-Integrated Platforms</b> (<b>Tanishq / CaratLane via SafeGold, Senco Gold <code>myDigiGold</code>, or Kalyan/Candere</b>) is significantly more cost-effective than standalone refinery platforms like <b>MMTC-PAMP</b>. While MMTC-PAMP offers 999.9 fineness, it rarely provides upfront purchase discounts and charges ₹350–₹800+ in coin minting/delivery fees. Jeweller-linked platforms allow <b>1:1 value redemption against jewellery</b> (bypassing the ~3% cash sell-back loss), stack with <b>Credit Card rewards</b> (e.g., <b>5% NeuCoins via Tata Neu Infinity HDFC Card</b>), and offer <b>referral / scheme bonuses</b> (e.g., Tanishq GHS, CaratLane PoP!, Senco Samriddhi / Marigold).<br><br>
+            2️⃣ <b>Long-Term Horizon (> 5 Years — Pure Financial Wealth):</b> For long-term gold investment, <b>RBI Sovereign Gold Bonds (SGBs)</b> remain the #1 benchmark (2.50% p.a. interest + 0% capital gains tax at 8-year maturity), but because <b>new primary SGB tranches have been discontinued post-February 2024</b> (and secondary-market SGBs trade at a 3%–10% scarcity premium), <b>SEBI-Regulated Gold ETFs</b> (<code>GOLDBEES</code>, <code>GOLDCASE</code>, <code>TATAGOLD</code>, <code>GOLDIETF</code>) are the <b>#1 active investment choice</b>. They charge <b>0% GST</b>, carry a <b>&lt;0.10% bid-ask spread</b>, have <b>unlimited Demat tenure</b>, and attract a flat <b>12.5% Long-Term Capital Gains (LTCG) tax after &gt;12 months</b>—which can be legally reduced or saved via <b>Tax Harvesting</b> (Capital-Loss Offset under Section 70/74, holding Gold inside a ≥65%-Equity Multi-Asset Fund for the ₹1.25 Lakh/yr Section 112A tax-free harvesting exemption, or Family Basic-Exemption Slab Harvesting).
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        col_h1, col_h2 = st.columns(2)
+        with col_h1:
+            st.info(
+                "### 💍 Horizon 1: Buying Within ≤ 5 Years (Jewellery Goal)\n"
+                "- **Why 5 Years Matters:** SafeGold (`2–5 yrs`), MMTC-PAMP (`5 yrs`), and Augmont (`5 yrs`) provide free insured Brinks/Sequel vault storage only up to 5 years, after which storage fees (`~0.05%/month`) or mandatory coin conversion apply.\n"
+                "- **Why Jeweller Platforms Beat MMTC-PAMP for Jewellery:**\n"
+                "  - **MMTC-PAMP (999.9):** Zero upfront purchase discounts + `₹350–₹800+` minting/delivery fee per coin + jeweller deductions when melting/exchanging third-party coins.\n"
+                "  - **SafeGold Partners (Tanishq / CaratLane) & Senco `myDigiGold`:** **100% 1:1 value credit** toward jewellery at 400+ Tanishq / CaratLane or 150+ Senco showrooms, **5% NeuCoins** with Tata Neu Infinity HDFC Card, and referral/scheme vouchers (**Senco Samriddhi / Marigold**, **Tanishq GHS**, **CaratLane PoP!**)."
+            )
+        with col_h2:
+            st.success(
+                "### 📈 Horizon 2: Long-Term Investing (> 5 Years)\n"
+                "- **1st Choice (Legacy) — RBI SGB:** `2.50% p.a.` interest + `0%` maturity tax, but **discontinued for new primary issues** post-Feb 2024 (secondary market NSE/BSE units trade at `3%–10%` premium).\n"
+                "- **2nd Choice (#1 Active Instrument) — SEBI Gold ETFs:** `0% GST` (saves 3% Day-1), `~0.05%` spread, no 5-year storage cap, and **12.5% flat LTCG after >12 months** (vs. >24 months for Digital/Physical Gold).\n"
+                "- **3 Verified Ways to Tax-Harvest the 12.5% Gold ETF LTCG:**\n"
+                "  1. **Tax-Loss Harvesting (Sec 70/74):** Offset Gold ETF LTCG against any Short-Term or Long-Term Capital Losses (STCL/LTCL) from stocks/equity funds.\n"
+                "  2. **Multi-Asset Fund Route (Sec 112A):** Hold Gold ETF exposure inside a ≥65% domestic-equity Multi-Asset Fund to unlock the **₹1.25 Lakh/year tax-free LTCG harvesting allowance**.\n"
+                "  3. **Family / HUF Slab Harvesting:** Realize Gold ETF gains in a spouse/parent/HUF Demat account below the basic tax-free income threshold."
+            )
+
+        st.markdown("#### 📋 1.3A Digital Gold Pricing & Platform Overview (Reference Snip + Live Verified Rates)")
+        st.caption(
+            f"Digital gold prices in India track live international bullion and MCX/IBJA rates — currently verified live at "
+            f"**{fmt_inr(p24_pre)}/g (Pre-GST)** and **{fmt_inr(p24_gst)}/g (including 3% GST)** "
+            f"(compared to ~₹7,500–₹7,700+/g at the historical time of the reference snip) — while complete retail/platform rates vary based on purity (**99.5% to 999.9 fineness**) and a typical **2% to 5% buy-sell spread**."
+        )
+
+        snip_rows = snapshot.get("snip_platform_overview") or build_snip_platform_overview(p24_pre, p24_gst)
+        st.dataframe(
+            pd.DataFrame(snip_rows),
+            column_config={
+                "Official URL": st.column_config.LinkColumn("Verify Platform ↗"),
+            },
+            use_container_width=True,
+            hide_index=True,
+        )
+
+        st.markdown("#### 📚 1.3B Verifiable Related Articles, Regulatory Circulars & Tax Guides (Live HTTP + SHA-256 Verified)")
+        st.caption(
+            "Every reference article and official circular supporting the ≤5-Year Jewellery Strategy, 5-Year Storage Cap, SGB Discontinuation, and 12.5% LTCG Tax Harvesting is live-probed below:"
+        )
+
+        art_df = pd.DataFrame(
+            [
+                {
+                    "Strategy Pillar": a.get("pillar"),
+                    "Verified Article / Official Circular": a.get("title"),
+                    "Publisher / Authority": a.get("publisher"),
+                    "Verified Key Statement": a.get("key_statement"),
+                    "HTTP Status": f"HTTP {a.get('http_status')}" if a.get("http_status") else "Pending Probe",
+                    "Latency (ms)": a.get("latency_ms"),
+                    "SHA-256 Fingerprint": (a.get("content_sha256") or "")[:16] + "..."
+                    if a.get("content_sha256")
+                    else "N/A",
+                    "Official Article URL": a.get("official_url"),
+                }
+                for a in expert_articles
+            ]
+        )
+        st.dataframe(
+            art_df,
+            column_config={
+                "Official Article URL": st.column_config.LinkColumn("Read & Verify Official Source ↗"),
             },
             use_container_width=True,
             hide_index=True,

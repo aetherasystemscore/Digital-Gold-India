@@ -8,11 +8,15 @@ A **Zero-Artificial-Data** Python/Streamlit application that tracks safe ways to
 
 ## ✨ Key Features
 
-1. **📈 Live Domestic & International Gold Benchmarks (`Tab 1`)**
+1. **📈 Live Domestic & International Gold Benchmarks, NSE Gold ETFs & Expert Strategy (`Tab 1`)**
    - Scrapes live official **IBJA (India Bullion and Jewellers Association)** 999 (24K), 995, 916 (22K), 750 (18K), and 585 (14K) rates from `ibjarates.com`.
    - Scrapes live retail 24K/22K benchmarks from `goodreturns.in`.
    - Computes real-time **International Spot (`XAU/INR`)** and **India Landed Customs Parity** from live `COMEX Gold (GC=F)` and `USD/INR (INR=X)`.
    - Tracks **7 SEBI-Regulated NSE Gold ETFs** (`GOLDBEES.NS`, `SETFGOLD.NS`, `HDFCGOLD.NS`, `GOLDIETF.NS`, `GOLD1.NS`, `GOLDCASE.NS`, `TATAGOLD.NS`) with live LTP, volume, Expense Ratio (`TER`), and 0% GST advantage.
+   - **Section 1.3 — Expert Gold Buying Strategy & Platform Overview:**
+     - **Horizon 1 (≤5 Years — Planned Jewellery Redemption):** Explains the 5-year free vault storage cap on Digital Gold (`SafeGold`, `MMTC-PAMP`, `Augmont`) and why **Jeweller-Integrated Digital Gold** (`SafeGold Partners: Tanishq / CaratLane / JioFinance`, `Senco Gold myDigiGold / Samriddhi / Marigold`) beats standalone `MMTC-PAMP` (`999.9`, 72-hr cooling-off, zero upfront discount + ₹350–₹800+ minting fee) and `Digigold (Amrapali Gujarat)`.
+     - **Horizon 2 (>5 Years — Long-Term Financial Investment):** Covers **RBI SGBs** (1st choice, primary issuances discontinued post-Feb 2024) vs. **SEBI Gold ETFs** (#1 active choice, 12.5% flat LTCG after >12 months) and **3 Verified Tax-Harvesting Techniques** (`Section 70/74` Capital-Loss Offset, `Section 112A` ₹1.25L/yr tax-free harvesting via ≥65%-equity Multi-Asset Funds, and Family/HUF Slab Harvesting).
+     - Includes **9 Live-Verified Reference Articles & Regulatory Circulars** with clickable URLs, HTTP 200 status, and `SHA-256` fingerprints.
 
 2. **🛡️ 4-Tier Safe Online Gold & Custodian Audit (`Tab 2`)**
    - Audits **Tier 1 (SEBI Gold ETFs & RBI SGBs)**, **Tier 2 (MMTC-PAMP, SafeGold, Augmont 24K Digital Gold)**, **Tier 3 (Tanishq, CaratLane, Malabar, Candere BIS-Hallmarked Jewellers)**, and **Tier 4 (Authorized E-Commerce Bullion Coins)**.

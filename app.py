@@ -7,29 +7,43 @@ Streamlit Application implementing the Expert Council Strategy & Critic's
 
 from __future__ import annotations
 
+import importlib
 import json
 import sqlite3
+import sys
 from pathlib import Path
 from typing import Any, Dict, List
 
 import pandas as pd
 import streamlit as st
 
-from gold_verification_engine import (
-    LIVE_PLATFORM_PLANS_AND_PROMOS_CATALOG,
-    SNAPSHOT_PATH,
-    SQLITE_DB_PATH,
-    VERIFIED_EXPERT_ARTICLES_AND_GUIDES,
-    VERIFIED_OFFERS_AND_CARDS_REGISTRY,
-    add_and_validate_custom_offer_url,
-    build_snip_platform_overview,
-    calculate_net_landed_cost_matrix,
-    calculate_same_quantity_etf_comparison,
-    fetch_live_validated_platform_plans,
-    load_latest_snapshot,
-    run_full_live_verification,
-    save_verification_snapshot,
-)
+_APP_DIR = str(Path(__file__).resolve().parent)
+if _APP_DIR not in sys.path:
+    sys.path.insert(0, _APP_DIR)
+
+import gold_verification_engine as _gve
+
+# Ensure Streamlit Cloud hot-reload picks up newly added functions/catalogs
+if (
+    getattr(_gve, "__schema_version__", None) != "1.2.0-zero-mock"
+    or not hasattr(_gve, "LIVE_PLATFORM_PLANS_AND_PROMOS_CATALOG")
+    or not hasattr(_gve, "fetch_live_validated_platform_plans")
+):
+    _gve = importlib.reload(_gve)
+
+LIVE_PLATFORM_PLANS_AND_PROMOS_CATALOG = getattr(_gve, "LIVE_PLATFORM_PLANS_AND_PROMOS_CATALOG", [])
+SNAPSHOT_PATH = _gve.SNAPSHOT_PATH
+SQLITE_DB_PATH = _gve.SQLITE_DB_PATH
+VERIFIED_EXPERT_ARTICLES_AND_GUIDES = getattr(_gve, "VERIFIED_EXPERT_ARTICLES_AND_GUIDES", [])
+VERIFIED_OFFERS_AND_CARDS_REGISTRY = _gve.VERIFIED_OFFERS_AND_CARDS_REGISTRY
+add_and_validate_custom_offer_url = getattr(_gve, "add_and_validate_custom_offer_url", None)
+build_snip_platform_overview = getattr(_gve, "build_snip_platform_overview", lambda *a, **kw: [])
+calculate_net_landed_cost_matrix = _gve.calculate_net_landed_cost_matrix
+calculate_same_quantity_etf_comparison = _gve.calculate_same_quantity_etf_comparison
+fetch_live_validated_platform_plans = getattr(_gve, "fetch_live_validated_platform_plans", lambda *a, **kw: [])
+load_latest_snapshot = _gve.load_latest_snapshot
+run_full_live_verification = _gve.run_full_live_verification
+save_verification_snapshot = getattr(_gve, "save_verification_snapshot", lambda *a, **kw: None)
 
 st.set_page_config(
     page_title="India Safe Gold & Verifiable Offer Tracker",

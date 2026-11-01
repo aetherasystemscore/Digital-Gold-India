@@ -33,7 +33,12 @@ import time
 from typing import Any, Dict, List, Optional, Tuple
 
 import requests
-from bs4 import BeautifulSoup
+try:
+    from bs4 import BeautifulSoup
+except ImportError:  # pragma: no cover
+    BeautifulSoup = None  # type: ignore
+
+__schema_version__ = "1.2.0-zero-mock"
 
 # Standard Indian Time (IST = UTC+5:30)
 IST = timezone(timedelta(hours=5, minutes=30))
